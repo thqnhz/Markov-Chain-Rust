@@ -1,3 +1,7 @@
+use std::{collections::HashMap};
+
+use rand::{rngs::ThreadRng, seq::{IndexedRandom, IteratorRandom}};
+
 fn main() {
     match gamblers_ruin(100, 1) {
         Ok(result) => println!("{}", result),
@@ -22,4 +26,51 @@ fn gamblers_ruin(mut money: i32, bid: i32) -> Result<String, String> {
             Ok(result + "doubled your money! $$$")
         }
     }
+}
+
+fn sentence_generator(input: String) -> String {
+    let words: Vec<&str> = input.trim().split(" ").collect();
+    let mut next_words: HashMap<String, Vec<String>> = HashMap::new();
+
+    for i in 0..words.len() {
+        let current_word: String = words[i].to_lowercase();
+        let next_word: String = if i + 1 < words.len() {
+            words[i+1].to_lowercase()
+        } else {
+            "".to_string()
+        };
+        next_words.entry(current_word)
+            .or_insert_with(|| vec!["".to_string()])
+            .push(next_word);
+    }
+    next_words.insert("".to_string(), vec!["".to_string()]);
+
+    // RNG part
+    let mut rng: ThreadRng = rand::rng();
+    let starting_words: Vec<&String> = next_words.keys().collect();
+
+    let mut current_word: &String = *starting_words
+        .clone()
+        .iter()
+        .filter(|&&k| k != "")
+        .choose(&mut rng)
+        .expect("Not enough info from input");
+
+    let mut result: String = String::new();
+
+    loop {
+        if current_word == "" {
+            break;
+        }
+        result.push_str(current_word);
+        result.push_str(" ");
+        if let Some(next_vec) = next_words.get(current_word) {
+            let next_word_option = next_vec.choose(&mut rng);
+            match next_word_option {
+                Some(next_word) => current_word = next_word,
+                None => break,
+            }
+        } else { break; }
+    }
+    return result;
 }
