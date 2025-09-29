@@ -1,26 +1,59 @@
 use std::{collections::HashMap};
 
+use clap::{Parser, Subcommand};
 use rand::{rngs::ThreadRng, seq::{IndexedRandom, IteratorRandom}};
 
-fn main() {
-    match gamblers_ruin(100, 1) {
-        Ok(result) => println!("{}", result),
-        Err(e) => println!("{}", e)
-    }
+#[derive(Parser, Debug)]
+#[command(author = "ThanhZ", version = "0.3.0", about = "Some Markov Chain Implementations")]
+struct Cli {
+    #[command(subcommand)]
+    game: Games,
 }
 
-fn gamblers_ruin(mut money: i32, bid: i32) -> Result<String, String> {
-    if bid > money || money / bid > 1000 {
+#[derive(Subcommand, Debug)]
+enum Games {
+    /// Gambler's ruin simulation
+    Gambler {
+        /// Starting money
+        #[arg(short, long)]
+        money: u16,
+        /// Bid per game
+        #[arg(short, long)]
+        bid: u16,
+    },
+    /// Sentence Generator
+    Sentence {
+        /// String input
+        #[arg(short, long)]
+        input: String,
+    },
+}
+
+fn main() {
+    let cli = Cli::parse();
+    match &cli.game {
+        Games::Gambler { money, bid } =>
+            match gamblers_ruin(&mut (*money as i32), &(*bid as i32)) {
+                Ok(result) => println!("{}", result),
+                Err(e) => println!("{}", e)
+            },
+        Games::Sentence { input } => println!("{}", sentence_generator(input))
+    };
+    
+}
+
+fn gamblers_ruin(money: &mut i32, bid: &i32) -> Result<String, String> {
+    if bid > money || *money / bid > 1000 {
         Err("Bid is too big or too small".to_string())
     } else {
-        let target_money: i32 = money * 2;
+        let target_money: i32 = *money * 2;
         let mut attempt: u16 = 1;
-        while money > 0 && money < target_money {
-            money += if rand::random_bool(0.5) {1} else {-1} * bid;
+        while *money > 0 && *money < target_money {
+            *money += if rand::random_bool(0.5) {1} else {-1} * bid;
             attempt += 1;
         }
         let result = String::from(format!("After {} attempts, you ", attempt.to_string()));
-        if money <= 0 {
+        if *money <= 0 {
             Ok(result + "lost it all at the casino! RIPBOZO")
         } else {
             Ok(result + "doubled your money! $$$")
@@ -28,7 +61,7 @@ fn gamblers_ruin(mut money: i32, bid: i32) -> Result<String, String> {
     }
 }
 
-fn sentence_generator(input: String) -> String {
+fn sentence_generator(input: &String) -> String {
     let words: Vec<&str> = input.trim().split(" ").collect();
     let mut next_words: HashMap<String, Vec<String>> = HashMap::new();
 
@@ -56,7 +89,7 @@ fn sentence_generator(input: String) -> String {
         .choose(&mut rng)
         .expect("Not enough info from input");
 
-    let mut result: String = String::new();
+    let mut result: String = String::from("A wise man once said: ");
 
     loop {
         if current_word == "" {
